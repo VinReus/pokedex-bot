@@ -35,10 +35,10 @@ def ottieni_url_file(file_id):
 
 def analizza_pokemon(image_bytes):
     try:
-        print("-> Inviando la foto tramite il Client Ufficiale Hugging Face...")
+                # Usiamo un modello ufficiale di Google per testare la connessione
         result = hf_client.image_classification(
             image=image_bytes, 
-            model="imjeffhi/pokemon_classifier"
+            model="google/vit-base-patch16-224"
         )
         print(f"-> Dati ricevuti dall'AI: {result}")
         if result and len(result) > 0:
