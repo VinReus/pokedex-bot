@@ -5,16 +5,14 @@ from huggingface_hub import InferenceClient
 
 app = Flask(__name__)
 
-# --- TOKEN INSERITI DIRETTAMENTE (Solo per repository Privato!) ---
-TELEGRAM_TOKEN = "8797428568:AAFZ98i1zkPvxedkGuBf1edq1t-X6Qw_jRw"
-HF_TOKEN = "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"
+# --- I TOKEN SONO NASCOSTI E AL SICURO SU RENDER ---
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+HF_TOKEN = os.environ.get("HF_TOKEN")
 
 RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL") 
 WEBHOOK_URL = f"{RENDER_URL}/webhook"
-
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-# Inizializziamo il "cervello" ufficiale di Hugging Face
 hf_client = InferenceClient(token=HF_TOKEN)
 
 @app.route('/')
@@ -38,16 +36,12 @@ def ottieni_url_file(file_id):
 def analizza_pokemon(image_bytes):
     try:
         print("-> Inviando la foto tramite il Client Ufficiale Hugging Face...")
-        
-        # Questa riga invia l'immagine direttamente ai nuovi server di HF
         result = hf_client.image_classification(
             image=image_bytes, 
             model="imjeffhi/pokemon_classifier"
         )
-        
         print(f"-> Dati ricevuti dall'AI: {result}")
         if result and len(result) > 0:
-            # Estraiamo i dati supportando il formato del nuovo Client
             try:
                 pokemon_nome = result[0].label
                 sicurezza = round(result[0].score * 100, 1)
