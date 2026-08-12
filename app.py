@@ -5,9 +5,9 @@ from huggingface_hub import InferenceClient
 
 app = Flask(__name__)
 
-# --- TOKEN ---
+# --- TOKEN INSERITI DIRETTAMENTE (Solo per repository Privato!) ---
 TELEGRAM_TOKEN = "8797428568:AAFZ98i1zkPvxedkGuBf1edq1t-X6Qw_jRw"
-HF_TOKEN = "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"
+HF_TOKEN = "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"
 
 RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL") 
 WEBHOOK_URL = f"{RENDER_URL}/webhook"
@@ -39,7 +39,7 @@ def analizza_pokemon(image_bytes):
     try:
         print("-> Inviando la foto tramite il Client Ufficiale Hugging Face...")
         
-        # Questa singola riga magica fa tutto da sola e trova il server giusto!
+        # Questa riga invia l'immagine direttamente ai nuovi server di HF
         result = hf_client.image_classification(
             image=image_bytes, 
             model="imjeffhi/pokemon_classifier"
@@ -47,7 +47,7 @@ def analizza_pokemon(image_bytes):
         
         print(f"-> Dati ricevuti dall'AI: {result}")
         if result and len(result) > 0:
-            # Estraiamo i dati (supporta sia il nuovo che il vecchio formato)
+            # Estraiamo i dati supportando il formato del nuovo Client
             try:
                 pokemon_nome = result[0].label
                 sicurezza = round(result[0].score * 100, 1)
@@ -91,3 +91,4 @@ def set_webhook():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    
