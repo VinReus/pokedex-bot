@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request
 import requests
+from huggingface_hub import InferenceClient
 
 app = Flask(__name__)
 
@@ -12,7 +13,9 @@ RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
 WEBHOOK_URL = f"{RENDER_URL}/webhook"
 
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-HF_API_URL = "https://api-inference.huggingface.co/models/imjeffhi/pokemon_classifier"
+
+# Inizializziamo il "cervello" ufficiale di Hugging Face
+hf_client = InferenceClient(token=HF_TOKEN)
 
 @app.route('/')
 def home():
@@ -20,11 +23,9 @@ def home():
 
 def invia_messaggio(chat_id, testo):
     url = f"{TELEGRAM_API_URL}/sendMessage"
-    # Modificato in HTML per evitare crash di Telegram con gli asterischi!
     payload = {"chat_id": chat_id, "text": testo, "parse_mode": "HTML"}
     r = requests.post(url, json=payload)
-    # Questo ci farà vedere nei log se Telegram rifiuta il messaggio
-    print(f"-> Status invio Telegram: {r.status_code} - Dettagli: {r.text}")
+    print(f"-> Status invio Telegram: {r.status_code}")
 
 def ottieni_url_file(file_id):
     url = f"{TELEGRAM_API_URL}/getFile?file_id={file_id}"
@@ -35,25 +36,30 @@ def ottieni_url_file(file_id):
     return None
 
 def analizza_pokemon(image_bytes):
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
     try:
-        print("-> Inviando la foto all'Intelligenza Artificiale...")
-        # Aumentato il tempo di attesa interno
-        response = requests.post(HF_API_URL, headers=headers, data=image_bytes, timeout=60)
-        print(f"-> Risposta AI (Codice): {response.status_code}")
+        print("-> Inviando la foto tramite il Client Ufficiale Hugging Face...")
         
-        if response.status_code == 200:
-            result = response.json()
-            print(f"-> Dati ricevuti dall'AI: {result}")
-            if isinstance(result, list) and len(result) > 0:
+        # Questa singola riga magica fa tutto da sola e trova il server giusto!
+        result = hf_client.image_classification(
+            image=image_bytes, 
+            model="imjeffhi/pokemon_classifier"
+        )
+        
+        print(f"-> Dati ricevuti dall'AI: {result}")
+        if result and len(result) > 0:
+            # Estraiamo i dati (supporta sia il nuovo che il vecchio formato)
+            try:
+                pokemon_nome = result[0].label
+                sicurezza = round(result[0].score * 100, 1)
+            except AttributeError:
                 pokemon_nome = result[0]['label']
                 sicurezza = round(result[0]['score'] * 100, 1)
-                # Usiamo <b> invece di ** per il grassetto
-                return f"È un <b>{pokemon_nome.capitalize()}</b>! (Sicurezza: {sicurezza}%)"
                 
-        return f"Sensore disturbato. L'AI ha risposto: {response.text}"
+            return f"È un <b>{pokemon_nome.capitalize()}</b>! (Sicurezza: {sicurezza}%)"
+            
+        return "Sensore disturbato. Non sono riuscito a identificare il Pokémon."
     except Exception as e:
-        print(f"-> Errore di connessione: {e}")
+        print(f"-> Errore di connessione AI: {e}")
         return f"Errore di comunicazione con l'Intelligenza Artificiale."
 
 @app.route('/webhook', methods=['POST'])
@@ -85,4 +91,3 @@ def set_webhook():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-    
